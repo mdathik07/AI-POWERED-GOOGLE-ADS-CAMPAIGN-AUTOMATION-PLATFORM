@@ -8,6 +8,20 @@ complete campaign (headlines, descriptions, keywords, budget, targeting) →
 review and edit it → the campaign is created in Google Ads **paused** → press
 "Go live" when you're ready to spend.
 
+## 🌐 Live Demo
+
+The platform is deployed and live:
+
+| | URL |
+|---|---|
+| **App (frontend)** | https://iub4r.vercel.app |
+| **API (backend)** | https://ads-platform-api.onrender.com ([health check](https://ads-platform-api.onrender.com/health)) |
+
+> ⏱️ The API runs on Render's free tier and sleeps after 15 minutes of
+> inactivity — the first request may take up to a minute while it wakes up.
+> Campaigns launch into a Google Ads **test account**, so no real ads are
+> served and no money is spent.
+
 ## Features
 
 - 💬 Conversational campaign creation with an AI marketing assistant (GPT-4o)
