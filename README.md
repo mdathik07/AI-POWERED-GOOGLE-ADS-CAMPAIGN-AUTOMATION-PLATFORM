@@ -1,130 +1,150 @@
-# Google Ads Campaign Management System
+# AdPilot — AI-Powered Google Ads Campaign Automation Platform
 
-A full-stack web application for managing and launching Google Ads campaigns through an intuitive chat interface.
+A full-stack web application that lets small businesses create and launch real
+Google Ads campaigns through a simple AI chat — no marketing expertise required.
+
+**Flow:** Chat with the AI assistant about your business → the AI generates a
+complete campaign (headlines, descriptions, keywords, budget, targeting) →
+review and edit it → the campaign is created in Google Ads **paused** → press
+"Go live" when you're ready to spend.
 
 ## Features
 
-- Interactive chat interface for campaign creation
-- Real-time campaign generation and management
-- Secure user authentication
-- Campaign launch functionality
-- Success tracking and monitoring
-- Modern and responsive UI
+- 💬 Conversational campaign creation with an AI marketing assistant (GPT-4o)
+- ✍️ AI-generated ad copy that respects Google Ads character limits
+  (headlines ≤ 30 chars, descriptions ≤ 90 chars), with live character counters
+  in the editor
+- 🔒 Safe launches — campaigns are created **paused** and only spend money
+  after an explicit "Go live" confirmation
+- 📊 Campaign dashboard with per-campaign status (draft / paused / live)
+- 🔐 JWT authentication with bcrypt-hashed passwords; all campaign and chat
+  APIs require login
+- 🛡️ Hardened API: helmet, rate limiting, restricted CORS, input validation
 
 ## Tech Stack
 
-### Frontend
-- React.js
-- React Router for navigation
-- Axios for API calls
-- Modern CSS styling
-
-### Backend
-- Node.js
-- Express.js
-- MongoDB (for data storage)
-- Google Ads API integration
+| Layer    | Tech |
+|----------|------|
+| Frontend | React 18, Vite, React Router, Axios |
+| Backend  | Node.js, Express, Mongoose |
+| Database | MongoDB (Atlas in production) |
+| AI       | GPT-4o via GitHub Models endpoint |
+| Ads      | Google Ads API (`google-ads-api`) |
+| Hosting  | Vercel (frontend) + Render (backend) |
 
 ## Project Structure
 
 ```
-google-ads-campaign/
-├── client/
-│   └── my-app/
-│       ├── src/
-│       │   ├── components/
-│       │   │   ├── HomePage.js
-│       │   │   ├── ChatPage.js
-│       │   │   ├── CampaignPage.js
-│       │   │   └── CampaignSuccess.js
-│       │   ├── App.js
-│       │   └── index.js
-│       └── package.json
-├── server/
+├── client/                 # React + Vite frontend (deployed to Vercel)
+│   ├── src/
+│   │   ├── pages/          # Home, Login, Signup, Chat, Campaign, Success, Dashboard
+│   │   ├── components/     # Navbar
+│   │   ├── api.js          # Axios instance + endpoint helpers
+│   │   └── auth.js         # localStorage session helpers
+│   └── vercel.json         # SPA rewrites
+├── server/                 # Express API (deployed to Render)
+│   ├── config/db.js        # MongoDB connection
+│   ├── middleware/auth.js  # JWT verification
+│   ├── controllers/        # auth, chatbot, campaign logic
+│   ├── models/             # User, ChatSession, Campaign
 │   ├── routes/
-│   ├── models/
-│   ├── controllers/
-│   ├── google-ads.yaml.template
 │   └── server.js
-├── .gitignore
-└── README.md
+└── render.yaml             # Render blueprint
 ```
 
-## Prerequisites
+## Local Development
 
-- Node.js (v14 or higher)
-- npm or yarn
-- MongoDB
-- Google Ads API credentials
+Prerequisites: Node.js ≥ 18, MongoDB running locally (or an Atlas URI).
 
-## Installation
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/google-ads-campaign.git
-cd google-ads-campaign
-```
-
-2. Install frontend dependencies:
-```bash
-cd client/my-app
-npm install
-```
-
-3. Install backend dependencies:
-```bash
-cd ../../server
-npm install
-```
-
-4. Set up credentials:
-   - Copy `server/google-ads.yaml.template` to `server/google-ads.yaml`
-   - Fill in your Google Ads API credentials in `google-ads.yaml`
-   - Create a `.env` file in the server directory with the following variables:
-```
-MONGODB_URI=your_mongodb_uri
-GOOGLE_ADS_CLIENT_ID=your_client_id
-GOOGLE_ADS_CLIENT_SECRET=your_client_secret
-JWT_SECRET=your_jwt_secret
-```
-
-## Running the Application
-
-1. Start the backend server:
-```bash
+# 1. Backend
 cd server
-npm start
+cp .env.example .env      # fill in your credentials
+npm install
+npm run dev               # http://localhost:5000
+
+# 2. Frontend (new terminal)
+cd client
+cp .env.example .env      # defaults point at http://localhost:5000
+npm install
+npm run dev               # http://localhost:5173
 ```
 
-2. Start the frontend development server:
-```bash
-cd client/my-app
-npm start
-```
+The chat and campaign generation work with just `OPENAI_API_KEY` set (a GitHub
+personal access token used against the GitHub Models endpoint). Launching real
+campaigns additionally requires the Google Ads credentials.
 
-The application will be available at `http://localhost:3000`
+## Environment Variables (server)
+
+| Variable | Purpose |
+|----------|---------|
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` | Secret for signing auth tokens (required in production) |
+| `CLIENT_ORIGIN` | Comma-separated allowed CORS origins |
+| `OPENAI_API_KEY` | Token for the GitHub Models (GPT-4o) endpoint |
+| `GOOGLE_ADS_CUSTOMER_ID` | Target Google Ads account |
+| `GOOGLE_ADS_CLIENT_ID` / `GOOGLE_ADS_CLIENT_SECRET` | OAuth app credentials |
+| `GOOGLE_ADS_REFRESH_TOKEN` | OAuth refresh token |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | Google Ads API developer token |
+| `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | Manager (MCC) account ID, if applicable |
+
+## Deployment
+
+### 1. Database — MongoDB Atlas (free tier)
+
+Create a free cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas),
+add a database user, allow access from anywhere (0.0.0.0/0) or Render's IPs,
+and copy the connection string.
+
+### 2. Backend — Render
+
+1. Push this repo to GitHub.
+2. In Render: **New → Blueprint**, select the repo — it picks up `render.yaml`.
+   (Or create a Web Service manually: root directory `server`, build
+   `npm install`, start `npm start`, health check path `/health`.)
+3. Set the environment variables listed above. Leave `CLIENT_ORIGIN` for after
+   the Vercel deploy.
+4. Deploy and note your service URL, e.g. `https://ads-platform-api.onrender.com`.
+
+### 3. Frontend — Vercel
+
+1. In Vercel: **New Project**, import the repo.
+2. Set **Root Directory** to `client` (framework preset: Vite).
+3. Add environment variable `VITE_API_URL` = your Render URL (no trailing slash).
+4. Deploy and note your app URL, e.g. `https://your-app.vercel.app`.
+
+### 4. Connect them
+
+Back in Render, set `CLIENT_ORIGIN=https://your-app.vercel.app` and redeploy.
+Done — open the Vercel URL and create a campaign.
+
+> **Note:** Render's free tier spins down after inactivity; the first request
+> after idle can take ~50 seconds while the service cold-starts.
 
 ## API Endpoints
 
-- `POST /api/auth/login` - User login
-- `POST /api/campaign/generate` - Generate new campaign
-- `POST /api/campaign/launch` - Launch campaign
-- `GET /api/campaign/status` - Get campaign status
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/signup` | — | Create account, returns JWT |
+| POST | `/api/auth/login` | — | Log in, returns JWT |
+| POST | `/api/chatbot/conversation` | ✅ | Send a chat message, get AI reply |
+| GET  | `/api/chatbot/session/:sessionId` | ✅ | Retrieve a conversation |
+| POST | `/api/campaign/generate` | ✅ | Generate campaign JSON from the chat |
+| POST | `/api/campaign/launch` | ✅ | Create the campaign in Google Ads (paused) |
+| POST | `/api/campaign/enable` | ✅ | Enable a paused campaign (go live) |
+| GET  | `/api/campaign/list` | ✅ | List the user's campaigns |
+| GET  | `/health` | — | Health check |
 
-## Contributing
+## Demo Video
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+https://youtu.be/6GG_6zgQanM
+
+## Contact
+
+Md Athik — mohdathik@gmail.com
+
+Project link: https://github.com/mdathik07/AI-POWERED-GOOGLE-ADS-CAMPAIGN-AUTOMATION-PLATFORM
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-## Demo Video of this Repo
-https://youtu.be/6GG_6zgQanM
-## Contact
-
-Md Athik - www.mohdathik@gmail.com
-Project Link: https://github.com/mdathik07/AI-POWERED-GOOGLE-ADS-CAMPAIGN-AUTOMATION-PLATFORM 
+MIT

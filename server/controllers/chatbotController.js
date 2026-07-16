@@ -1,45 +1,48 @@
 const OpenAI = require("openai").default || require("openai");
 const { v4: uuidv4 } = require("uuid");
 const ChatSession = require("../models/ChatSession");
-const Campaign = require("../models/Campaign");
 
 const token = process.env["OPENAI_API_KEY"];
 
 exports.processConversation = async (req, res) => {
   const { message, sessionId } = req.body;
+
+  if (!message || typeof message !== "string" || !message.trim()) {
+    return res.status(400).json({ error: "A non-empty message is required" });
+  }
+  if (message.length > 4000) {
+    return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
+  }
+
   let currentSessionId = sessionId;
 
   try {
-    let chatSession;
+    let chatSession = currentSessionId
+      ? await ChatSession.findOne({ sessionId: currentSessionId })
+      : null;
 
-    // Initialize or retrieve chat session
-    if (!currentSessionId) {
-      currentSessionId = uuidv4();
+    if (!chatSession) {
+      currentSessionId = currentSessionId || uuidv4();
       chatSession = new ChatSession({
         sessionId: currentSessionId,
+        user: req.user?.id,
         conversation: [{ sender: "user", message }],
       });
-      await chatSession.save();
     } else {
-      chatSession = await ChatSession.findOne({ sessionId: currentSessionId });
-      if (!chatSession) {
-        chatSession = new ChatSession({
-          sessionId: currentSessionId,
-          conversation: [{ sender: "user", message }],
-        });
-        await chatSession.save();
-      } else {
-        chatSession.conversation.push({ sender: "user", message });
-        await chatSession.save();
-      }
+      chatSession.conversation.push({ sender: "user", message });
     }
+    await chatSession.save();
 
-    // Construct messages for the AI model, including previous conversations
     const messagesForAPI = [
       {
         role: "system",
         content:
-          "You are an AI marketing assistant. Gather all necessary details to create an optimized Google Ads campaign. If any details are missing, ask the user relevant follow-up questions.",
+          "You are an AI marketing assistant helping small businesses create Google Ads campaigns. " +
+          "Gather all necessary details to create an optimized campaign: business name, website, " +
+          "what they sell, target audience, locations to target, and daily budget. " +
+          "If any details are missing, ask relevant follow-up questions — one or two at a time, " +
+          "in plain language a non-marketer understands. Once you have enough information, " +
+          "summarize what you've gathered and tell the user they can generate their campaign.",
       },
       ...chatSession.conversation.map((msg) => ({
         role: msg.sender === "user" ? "user" : "assistant",
@@ -52,7 +55,6 @@ exports.processConversation = async (req, res) => {
       apiKey: token,
     });
 
-    // Call OpenAI API
     const response = await client.chat.completions.create({
       messages: messagesForAPI,
       model: "gpt-4o",
@@ -63,11 +65,9 @@ exports.processConversation = async (req, res) => {
 
     const aiResponse = response.choices[0].message.content;
 
-    // Save AI response in conversation history
     chatSession.conversation.push({ sender: "bot", message: aiResponse });
     await chatSession.save();
 
-    // Return AI response and sessionId
     res.json({ reply: aiResponse, sessionId: currentSessionId });
   } catch (error) {
     console.error("Error processing conversation:", error);
