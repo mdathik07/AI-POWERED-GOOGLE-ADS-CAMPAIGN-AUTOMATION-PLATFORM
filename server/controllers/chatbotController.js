@@ -2,7 +2,7 @@ const OpenAI = require("openai").default || require("openai");
 const { v4: uuidv4 } = require("uuid");
 const ChatSession = require("../models/ChatSession");
 
-const token = process.env["OPENAI_API_KEY"];
+const token = process.env["GROQ_API_KEY"];
 
 exports.processConversation = async (req, res) => {
   const { message, sessionId } = req.body;
@@ -51,15 +51,15 @@ exports.processConversation = async (req, res) => {
     ];
 
     const client = new OpenAI({
-      baseURL: "https://models.inference.ai.azure.com",
+      baseURL: "https://api.groq.com/openai/v1",
       apiKey: token,
     });
 
     const response = await client.chat.completions.create({
       messages: messagesForAPI,
-      model: "gpt-4o",
+      model: "openai/gpt-oss-120b",
       temperature: 1,
-      max_tokens: 4096,
+      max_completion_tokens: 4096,
       top_p: 1,
     });
 
