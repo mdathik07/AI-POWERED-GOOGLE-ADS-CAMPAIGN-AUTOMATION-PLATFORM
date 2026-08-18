@@ -3,7 +3,7 @@ const ChatSession = require("../models/ChatSession");
 const Campaign = require("../models/Campaign");
 const { GoogleAdsApi } = require("google-ads-api");
 
-const token = process.env["OPENAI_API_KEY"];
+const token = process.env["GROQ_API_KEY"];
 
 // Google Ads responsive search ad limits
 const LIMITS = {
@@ -169,9 +169,9 @@ exports.generateCampaign = async (req, res) => {
 
     const response = await client.chat.completions.create({
       messages: messagesForAPI,
-      model: "gpt-4o",
+      model: "openai/gpt-oss-120b",
       temperature: 1,
-      max_tokens: 4096,
+      max_completion_tokens: 4096,
       top_p: 1,
       response_format: { type: "json_object" },
     });
