@@ -123,7 +123,7 @@ exports.generateCampaign = async (req, res) => {
     const conversationData = chatSession.conversation;
 
     const client = new OpenAI({
-      baseURL: "models.inference.ai.azure.com",
+      baseURL: "https://api.groq.com/openai/v1",
       apiKey: token,
     });
 
